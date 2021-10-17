@@ -1,3 +1,4 @@
+package lab1;
 
 import org.jnativehook.GlobalScreen;
 import org.jnativehook.NativeHookException;

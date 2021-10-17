@@ -1,3 +1,5 @@
+package lab1;
+
 import java.util.function.BinaryOperator;
 
 public class SumOperation implements BinaryOperator<Integer> {

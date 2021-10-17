@@ -1,4 +1,4 @@
-package computators;
+package lab1.computators;
 
 import os.lab1.compfuncs.basic.IntOps;
 
