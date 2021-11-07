@@ -38,6 +38,8 @@ public class SchedulingAlgorithm {
                     while (comptime < runtime) {
                         if (process.cpudone == process.cputime) {
                             completed++;
+                            list.remove((Object) currentProcess);
+                            j--;
                             logProcessState(currentProcess, out, process, "completed");
 
                             if (completed == size) {
