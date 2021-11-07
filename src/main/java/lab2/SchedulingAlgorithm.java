@@ -1,19 +1,14 @@
 package lab2;
 
-// Run() is called from Scheduling.main() and is where
-// the scheduling algorithm written by the user resides.
-// User modification should occur within the Run() function.
-
 import java.util.*;
 import java.io.*;
+import java.util.stream.IntStream;
 
 public class SchedulingAlgorithm {
-
-    public static Results Run(int runtime, Vector processVector, Results result) {
-        int i = 0;
+    public static Results run(int runtime, Vector processVector, Results result) {
         int comptime = 0;
         int currentProcess = 0;
-        int previousProcess = 0;
+
         int size = processVector.size();
         int completed = 0;
 
@@ -26,11 +21,7 @@ public class SchedulingAlgorithm {
         queueList.add(new ArrayList<Integer>());
 
         List currentList = (List) queueList.get(0);
-        for (int k = 0; k < size; k++) {
-            currentList.add(k);
-        }
-
-        System.out.println(queueList);
+        IntStream.range(0, size).forEach(currentList::add);
 
         try {
             PrintStream out = new PrintStream(new FileOutputStream(resultsFile));
@@ -41,7 +32,7 @@ public class SchedulingAlgorithm {
                 for (int j = 0; j < list.size(); j++) {
                     currentProcess = (Integer) list.get(j);
 
-                    sProcess process = (sProcess) processVector.elementAt(currentProcess);
+                    Process process = (Process) processVector.elementAt(currentProcess);
                     logProcessState(currentProcess, out, process, "registered");
 
                     while (comptime < runtime) {
@@ -76,7 +67,7 @@ public class SchedulingAlgorithm {
                             break;
                         }
 
-                        process = (sProcess) processVector.elementAt(currentProcess);
+                        process = (Process) processVector.elementAt(currentProcess);
                         process.cpudone++;
 
                         if (process.ioblocking > 0) {
@@ -91,7 +82,6 @@ public class SchedulingAlgorithm {
                 }
             }
 
-
             out.close();
         } catch (IOException e) { /* Handle exceptions */ }
 
@@ -100,7 +90,7 @@ public class SchedulingAlgorithm {
         return result;
     }
 
-    private static void logProcessState(int currentProcess, PrintStream out, sProcess process, String state) {
+    private static void logProcessState(int currentProcess, PrintStream out, Process process, String state) {
         out.println("Process: " + currentProcess + " " + state + "... (" + process.cputime + " " + process.ioblocking + " " + process.cpudone + " " + process.ionext + ")");
     }
 }
