@@ -1,3 +1,5 @@
+package lab2;
+
 // This file contains the main() function for the Scheduling
 // simulation.  Init() initializes most of the variables by
 // reading from a provided file.  SchedulingAlgorithm.Run() is
@@ -15,7 +17,6 @@ import java.util.*;
 // import SchedulingAlgorithm;
 
 public class Scheduling {
-
     private static int processnum = 5;
     private static int meanDev = 1000;
     private static int standardDev = 100;
