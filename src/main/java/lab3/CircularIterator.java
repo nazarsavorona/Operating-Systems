@@ -1,9 +1,7 @@
 package lab3;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Vector;
 
 public class CircularIterator<T> implements ListIterator<T> {
     private final List<T> list;
@@ -74,37 +72,6 @@ public class CircularIterator<T> implements ListIterator<T> {
         if (index >= 0 && index < list.size()) {
             i = index;
         }
-    }
-
-    public static void main(String[] args) {
-        List<Page> circular = new ArrayList<>();
-        CircularIterator<Page> iterator = new CircularIterator<>(circular);
-        circular.addAll(List.of(new Page(0, 0, (byte) 0, (byte) 0, 0, 0, 0L, 0L)));
-        iterator.get().id = 1;
-////s.id = 1;
-////iterator.set(s);
-//        System.out.println(iterator.get());
-////        circular.add("new");
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-////        circular.remove("new");
-////        iterator.set("lel");
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        System.out.println(iterator.next());
-//        Page page = new Page(0, 0, (byte) 0, (byte) 0, 0, 0, 0L, 0L);
-//        List<Page> pages = new ArrayList<>();
-//        Vector vector = new Vector<Page>();
-//        vector.add(page);
-//
-//        pages.add((Page) vector.get(0));
-//        pages.get(0).id = 1;
-//        System.out.println(pages);
     }
 }
 
