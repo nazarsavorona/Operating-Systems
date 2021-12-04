@@ -1,6 +1,5 @@
 package lab3;
 
-import java.lang.Thread;
 import java.io.*;
 import java.util.*;
 
@@ -424,12 +423,12 @@ public class Kernel extends Thread {
                 pageIteration.R = 0;
             }
             if (pageIteration.physical != -1) {
-                pageIteration.inMemTime = pageIteration.inMemTime + tick;
-                pageIteration.lastTouchTime = pageIteration.lastTouchTime + tick;
+                pageIteration.inMemTime++;
+                pageIteration.lastTouchTime++;
             }
         }
         runs++;
-        controlPanel.timeValueLabel.setText(Integer.toString(runs * tick) + " (ns)");
+        controlPanel.timeValueLabel.setText(Integer.toString(runs) + " (ns)");
     }
 
     private void logMessage(String msg) {
