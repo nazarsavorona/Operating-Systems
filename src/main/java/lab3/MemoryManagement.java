@@ -4,13 +4,24 @@ package lab3;
 import java.io.File;
 
 public class MemoryManagement {
-    public static void main(String[] args) {
-        ControlPanel controlPanel;
-        Kernel kernel;
+    private Kernel kernel;
 
-        if (args.length < 1 || args.length > 2) {
-            System.out.println("Usage: 'java MemoryManagement <COMMAND FILE> <PROPERTIES FILE>'");
+    public static void main(String[] args) {
+        MemoryManagement management = new MemoryManagement();
+        management.run(args);
+    }
+
+    public void run(String[] args) {
+        boolean isModifiedAlgorithm = true;
+
+        if (args.length < 1 || args.length > 3) {
+            System.out.println("Usage: 'java MemoryManagement <COMMAND FILE> <PROPERTIES FILE> [IS MODIFIED " +
+                    "ALGORITHM USED]'");
             System.exit(-1);
+        }
+
+        if (args.length > 2) {
+            isModifiedAlgorithm = Boolean.parseBoolean(args[2]);
         }
 
         File f = new File(args[0]);
@@ -37,12 +48,16 @@ public class MemoryManagement {
             }
         }
 
-        kernel = new Kernel();
-        controlPanel = new ControlPanel("Memory Management");
+        kernel = new Kernel(isModifiedAlgorithm);
+        ControlPanel controlPanel = new ControlPanel("Memory Management");
         if (args.length == 1) {
             controlPanel.init(kernel, args[0], null);
         } else {
             controlPanel.init(kernel, args[0], args[1]);
         }
+    }
+
+    public void runKernel() {
+        kernel.run();
     }
 }

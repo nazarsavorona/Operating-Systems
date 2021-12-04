@@ -1,6 +1,7 @@
 package lab3;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class Kernel extends Thread {
@@ -23,12 +24,21 @@ public class Kernel extends Thread {
     private boolean doStdoutLog = false;
     private boolean doFileLog = false;
     private boolean expandPhysicalMemory = false;
+    private boolean isModifiedAlgorithm = true;
+    public int timeout = 500;
     public int runs;
     public int runcycles;
     public long block = (int) Math.pow(2, 12);
     public static byte addressradix = 10;
     private Set<Integer> physicalMapped = new HashSet<>();
     private List<Page> workingSet = new ArrayList<>();
+    private int pageFaultCount = 0;
+    private PageFault pageFaultHandler = new PageFault();
+
+    public Kernel(boolean isModifiedAlgorithm) {
+        super();
+        this.isModifiedAlgorithm = isModifiedAlgorithm;
+    }
 
     public void init(String commands, String config) {
         File f = new File(commands);
@@ -76,6 +86,14 @@ public class Kernel extends Thread {
                         while (st.hasMoreTokens()) {
                             tmp = st.nextToken();
                             ioLimit = Common.s2i(st.nextToken());
+                        }
+                    }
+
+                    if (line.startsWith("timeout")) {
+                        StringTokenizer st = new StringTokenizer(line);
+                        while (st.hasMoreTokens()) {
+                            tmp = st.nextToken();
+                            timeout = Common.s2i(st.nextToken());
                         }
                     }
 
@@ -328,14 +346,14 @@ public class Kernel extends Thread {
         controlPanel.paintPage(page);
     }
 
-    private void printLogFile(String message) {
+    private void printLogFile(String streamName, String message) {
         String line;
         String temp = "";
 
-        File trace = new File(output);
+        File trace = new File(streamName);
         if (trace.exists()) {
             try {
-                DataInputStream in = new DataInputStream(new FileInputStream(output));
+                DataInputStream in = new DataInputStream(new FileInputStream(streamName));
                 while ((line = in.readLine()) != null) {
                     temp = temp + line + lineSeparator;
                 }
@@ -345,7 +363,7 @@ public class Kernel extends Thread {
             }
         }
         try {
-            PrintStream out = new PrintStream(new FileOutputStream(output));
+            PrintStream out = new PrintStream(new FileOutputStream(streamName));
             out.print(temp);
             out.print(message);
             out.close();
@@ -358,12 +376,29 @@ public class Kernel extends Thread {
         step();
         while (runs != runcycles) {
             try {
-                Thread.sleep(2000);
+                Thread.sleep(timeout);
             } catch (InterruptedException e) {
                 /* Do nothing */
             }
             step();
         }
+        logPageFaultCount();
+    }
+
+    private void logPageFaultCount() {
+        String msg = "\n\nDate: " + (new SimpleDateFormat("dd/MM/yyyy")).format(new Date()) + "\n";
+
+        if (isModifiedAlgorithm) {
+            msg += "WSClock PRA";
+        } else {
+            msg += "FIFO PRA";
+        }
+
+        msg += " page fault count: " + Integer.toString(pageFaultCount) + "\n";
+        msg += "Config file: " + config_file + "\n";
+        msg += "Command file: " + command_file + "\n\n";
+
+        logMessage(msg);
     }
 
     public void step() {
@@ -386,7 +421,7 @@ public class Kernel extends Thread {
         if (instruct.inst.startsWith("READ")) {
             if (page.physical == -1) {
                 logMessage("READ " + Long.toString(instruct.addr, addressradix) + " ... page fault");
-                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
+                startReplacementAlgorithm(virtualPageNumber);
                 controlPanel.pageFaultValueLabel.setText("YES");
             } else {
                 if (!workingSet.contains(page)) {
@@ -400,7 +435,7 @@ public class Kernel extends Thread {
         if (instruct.inst.startsWith("WRITE")) {
             if (page.physical == -1) {
                 logMessage("WRITE " + Long.toString(instruct.addr, addressradix) + " ... page fault");
-                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
+                startReplacementAlgorithm(virtualPageNumber);
                 controlPanel.pageFaultValueLabel.setText("YES");
             } else {
                 if (!workingSet.contains(page)) {
@@ -412,23 +447,30 @@ public class Kernel extends Thread {
                 logMessage("WRITE " + Long.toString(instruct.addr, addressradix) + " ... okay");
             }
         }
-        for (i = 0; i < virtPageNum; i++) {
-            Page pageIteration = (Page) memVector.elementAt(i);
+        for (i = 0; i < workingSet.size(); i++) {
+            Page pageIteration = workingSet.get(i);
             if (pageIteration.R == 1 && pageIteration.lastTouchTime == tick) {
                 pageIteration.R = 0;
             }
-            if (pageIteration.physical != -1) {
-                pageIteration.inMemTime++;
-                pageIteration.lastTouchTime++;
-            }
+            pageIteration.inMemTime++;
+            pageIteration.lastTouchTime++;
         }
         runs++;
         controlPanel.timeValueLabel.setText(Integer.toString(runs) + " (ns)");
     }
 
+    private void startReplacementAlgorithm(int virtualPageNumber) {
+        pageFaultCount++;
+        if (isModifiedAlgorithm) {
+            pageFaultHandler.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
+        } else {
+            pageFaultHandler.replacePage(memVector, virtPageNum, virtualPageNumber, controlPanel);
+        }
+    }
+
     private void logMessage(String msg) {
         if (doFileLog) {
-            printLogFile(msg);
+            printLogFile(output, msg);
         }
         if (doStdoutLog) {
             System.out.println(msg);
@@ -436,6 +478,8 @@ public class Kernel extends Thread {
     }
 
     public void reset() {
+        workingSet.clear();
+        physicalMapped.clear();
         memVector.removeAllElements();
         instructVector.removeAllElements();
         controlPanel.statusValueLabel.setText("STOP");
