@@ -50,74 +50,76 @@ public class PageFault {
      *                       simulator, and allows one to modify the current display.
      */
     public static void replacePage(Vector mem, int virtualPageNum, ControlPanel controlPanel,
-                                   Set<Integer> physicalUnloaded, List<Page> workingSet, int tau, int ioLimit) {
+                                   List<Page> workingSet, int tau, int ioLimit) {
         int evictionPageId = -1;
+        int evictionPageWorkSetIndex = -1;
+        int cleanPageWorkSetIndex = -1;
         int physicalNewPageNum = -1;
 
-        if (!physicalUnloaded.isEmpty()) {
-            physicalNewPageNum = physicalUnloaded.iterator().next();
-            physicalUnloaded.remove(physicalNewPageNum);
+        if (iterator == null) {
+            iterator = new CircularIterator<>(workingSet);
+        }
 
-            for (Object pageObject : mem) {
-                Page currentPage = (Page) pageObject;
+        int currentIOLimit = ioLimit;
+        int cleanPageId = -1;
+        int indexIOLimitReload = iterator.index();
 
-                if (currentPage.id != virtualPageNum && currentPage.physical == physicalNewPageNum) {
-                    evictionPageId = currentPage.id;
+        boolean started = false;
+
+        while (true) {
+            Page workingSetCurrentPage = iterator.get();
+
+            if (started && iterator.index() == indexIOLimitReload) {
+                if (currentIOLimit == ioLimit) {
+                    if (cleanPageId != -1) {
+                        evictionPageId = cleanPageId;
+                        evictionPageWorkSetIndex = cleanPageWorkSetIndex;
+                    } else {
+                        evictionPageId = workingSetCurrentPage.id;
+                        evictionPageWorkSetIndex = iterator.index();
+                    }
                     break;
                 }
+
+                currentIOLimit = ioLimit;
             }
 
-            workingSet.add((Page) mem.get(virtualPageNum));
-        } else {
-            if (iterator == null) {
-                iterator = new CircularIterator<>(workingSet);
-            }
+            started = true;
 
-            int currentIOLimit = ioLimit;
-            int cleanPageId = -1;
-            int indexIOLimitReload = iterator.previousIndex() + 1;
-
-            while (true) {
-                Page workingSetCurrentPage = iterator.get();
-
-                if (workingSetCurrentPage.R == 1) {
-                    workingSetCurrentPage.R = 0;
-                }
-
-                if (workingSetCurrentPage.M == 0) {
-                    cleanPageId = workingSetCurrentPage.id;
-                }
-
-                if (workingSetCurrentPage.R == 0 && workingSetCurrentPage.lastTouchTime > tau) {
-                    if (workingSetCurrentPage.M == 0) {
-                        evictionPageId = workingSetCurrentPage.id;
-                        break;
-                    } else {
-                        if (currentIOLimit > 0) {
-                            currentIOLimit--;
-                            workingSetCurrentPage.M = 0;
-                        }
-                    }
-                }
-
-                if (iterator.nextIndex() == indexIOLimitReload) {
-                    if (currentIOLimit < ioLimit) {
-                        if (cleanPageId != -1) {
-                            evictionPageId = cleanPageId;
-                        } else {
-                            evictionPageId = workingSetCurrentPage.id;
-                        }
-                        break;
-                    }
-
-                    currentIOLimit = ioLimit;
-                }
+            if (workingSetCurrentPage.R == 1) {
+                workingSetCurrentPage.R = 0;
                 iterator.next();
+                continue;
             }
 
-            physicalNewPageNum = ((Page) mem.get(evictionPageId)).physical;
-            iterator.set((Page) mem.get(virtualPageNum));
+            if (workingSetCurrentPage.M == 0) {
+                cleanPageId = workingSetCurrentPage.id;
+                cleanPageWorkSetIndex = iterator.index();
+            }
+
+            if (workingSetCurrentPage.R == 0 && workingSetCurrentPage.lastTouchTime > tau) {
+                if (workingSetCurrentPage.M == 0) {
+                    evictionPageId = workingSetCurrentPage.id;
+                    evictionPageWorkSetIndex = iterator.index();
+                    break;
+                } else {
+                    if (currentIOLimit > 0) {
+                        currentIOLimit--;
+                        workingSetCurrentPage.M = 0;
+                    }
+                }
+            }
+
+            iterator.next();
         }
+
+        iterator.setIndex(evictionPageWorkSetIndex);
+        iterator.next();
+
+        physicalNewPageNum = ((Page) mem.get(evictionPageId)).physical;
+        System.out.println((Page) mem.get(virtualPageNum));
+        System.out.println((Page) mem.get(evictionPageId));
+        workingSet.set(evictionPageWorkSetIndex, (Page) mem.get(virtualPageNum));
 
         ((Page) mem.get(evictionPageId)).reset();
         ((Page) mem.get(virtualPageNum)).physical = physicalNewPageNum;

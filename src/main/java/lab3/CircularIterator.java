@@ -66,6 +66,16 @@ public class CircularIterator<T> implements ListIterator<T> {
         return list.get(i);
     }
 
+    public int index() {
+        return i;
+    }
+
+    public void setIndex(int index) {
+        if (index >= 0 && index < list.size()) {
+            i = index;
+        }
+    }
+
     public static void main(String[] args) {
         List<Page> circular = new ArrayList<>();
         CircularIterator<Page> iterator = new CircularIterator<>(circular);

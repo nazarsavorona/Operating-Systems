@@ -17,6 +17,10 @@ public class Page {
                 ", physical=" + physical +
                 ", R=" + R +
                 ", M=" + M +
+                ", inMemTime=" + inMemTime +
+                ", lastTouchTime=" + lastTouchTime +
+                ", high=" + high +
+                ", low=" + low +
                 '}';
     }
 

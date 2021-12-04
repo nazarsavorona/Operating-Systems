@@ -28,7 +28,6 @@ public class Kernel extends Thread {
     public long block = (int) Math.pow(2, 12);
     public static byte addressradix = 10;
     private Set<Integer> physicalMapped = new HashSet<>();
-    private Set<Integer> physicalUnloaded = new HashSet<>();
     private List<Page> workingSet = new ArrayList<>();
 
     public void init(String commands, String config) {
@@ -52,7 +51,7 @@ public class Kernel extends Thread {
         long high = 0;
         long low = 0;
         long addr = 0;
-        long address_limit = (block * virtPageNum + 1) - 1;
+        long address_limit = block * virtPageNum - 1;
 
         if (config != null) {
             f = new File(config);
@@ -63,12 +62,12 @@ public class Kernel extends Thread {
                         StringTokenizer st = new StringTokenizer(line);
                         while (st.hasMoreTokens()) {
                             tmp = st.nextToken();
-                            virtPageNum = Common.s2i(st.nextToken()) - 1;
-                            if (virtPageNum < 2 || virtPageNum > 63) {
+                            virtPageNum = Common.s2i(st.nextToken());
+                            if (virtPageNum < 2 || virtPageNum > 64) {
                                 System.out.println("MemoryManagement: numpages out of bounds.");
                                 System.exit(-1);
                             }
-                            address_limit = (block * virtPageNum + 1) - 1;
+                            address_limit = block * virtPageNum - 1;
                         }
                     }
 
@@ -98,7 +97,7 @@ public class Kernel extends Thread {
                 }
                 in.close();
             } catch (IOException e) { /* Handle exceptions */ }
-            for (i = 0; i <= virtPageNum; i++) {
+            for (i = 0; i < virtPageNum; i++) {
                 high = (block * (i + 1)) - 1;
                 low = block * i;
                 memVector.addElement(new Page(i, -1, R, M, 0, 0, high, low));
@@ -117,7 +116,7 @@ public class Kernel extends Thread {
                             } else {
                                 physical = Common.s2i(tmp);
                             }
-                            if ((0 > id || id > virtPageNum) || (-1 > physical || physical > ((virtPageNum - 1) / 2))) {
+                            if ((0 > id || id >= virtPageNum) || (-1 > physical || physical > (virtPageNum / 2))) {
                                 System.out.println("MemoryManagement: Invalid page value in " + config);
                                 System.exit(-1);
                             }
@@ -190,13 +189,13 @@ public class Kernel extends Thread {
                             } else {
                                 block = Long.parseLong(tmp, 10);
                             }
-                            address_limit = (block * virtPageNum + 1) - 1;
+                            address_limit = block * virtPageNum - 1;
                         }
                         if (block < 64 || block > Math.pow(2, 26)) {
                             System.out.println("MemoryManagement: pagesize is out of bounds");
                             System.exit(-1);
                         }
-                        for (i = 0; i <= virtPageNum; i++) {
+                        for (i = 0; i < virtPageNum; i++) {
                             Page page = (Page) memVector.elementAt(i);
                             page.high = (block * (i + 1)) - 1;
                             page.low = block * i;
@@ -282,13 +281,13 @@ public class Kernel extends Thread {
             }
             physical_count = 0;
         }
-        if (expandPhysicalMemory && map_count < (virtPageNum + 1) / 2) {
+        if (expandPhysicalMemory && map_count < virtPageNum / 2) {
             for (i = 0; i < virtPageNum; i++) {
                 Page page = (Page) memVector.elementAt(i);
-                if (page.physical == -1 && map_count < (virtPageNum + 1) / 2) {
+                if (page.physical == -1 && map_count < virtPageNum / 2) {
                     int freePageIndex = 0;
 
-                    for (int n = (virtPageNum + 1) / 2; freePageIndex < n; freePageIndex++) {
+                    for (int n = virtPageNum / 2; freePageIndex < n; freePageIndex++) {
                         if (!physicalMapped.contains(freePageIndex)) {
                             physicalMapped.add(freePageIndex);
                             break;
@@ -301,13 +300,12 @@ public class Kernel extends Thread {
             }
         }
 
-        physicalUnloaded.addAll(physicalMapped);
-
         for (i = 0; i < virtPageNum; i++) {
             Page page = (Page) memVector.elementAt(i);
             if (page.physical == -1) {
                 controlPanel.removePhysicalPage(i);
             } else {
+                workingSet.add(page);
                 controlPanel.addPhysicalPage(page.id, page.physical);
             }
         }
@@ -388,14 +386,12 @@ public class Kernel extends Thread {
         if (instruct.inst.startsWith("READ")) {
             if (page.physical == -1) {
                 logMessage("READ " + Long.toString(instruct.addr, addressradix) + " ... page fault");
-                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, physicalUnloaded,
-                        workingSet, tau, ioLimit);
+                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
                 controlPanel.pageFaultValueLabel.setText("YES");
             } else {
                 if (!workingSet.contains(page)) {
                     workingSet.add(page);
                 }
-                physicalUnloaded.remove(page.physical);
                 page.R = 1;
                 page.lastTouchTime = 0;
                 logMessage("READ " + Long.toString(instruct.addr, addressradix) + " ... okay");
@@ -404,13 +400,12 @@ public class Kernel extends Thread {
         if (instruct.inst.startsWith("WRITE")) {
             if (page.physical == -1) {
                 logMessage("WRITE " + Long.toString(instruct.addr, addressradix) + " ... page fault");
-                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, physicalUnloaded, workingSet, tau, ioLimit);
+                PageFault.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
                 controlPanel.pageFaultValueLabel.setText("YES");
             } else {
                 if (!workingSet.contains(page)) {
                     workingSet.add(page);
                 }
-                physicalUnloaded.remove(page.physical);
                 page.M = 1;
                 page.R = 1;
                 page.lastTouchTime = 0;
