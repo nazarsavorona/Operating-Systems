@@ -1,8 +1,10 @@
 package lab3;
 
+import java.awt.*;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 
 public class Kernel extends Thread {
     // The number of virtual pages must be fixed at 63 due to
@@ -339,6 +341,8 @@ public class Kernel extends Thread {
 
     public void setControlPanel(ControlPanel newControlPanel) {
         controlPanel = newControlPanel;
+        controlPanel.setTitle((isModifiedAlgorithm ? "WSClock" : "FIFO") + " PRA");
+        controlPanel.setLocation(isModifiedAlgorithm ? 200 : 900, 200);
     }
 
     public void getPage(int pageNum) {
