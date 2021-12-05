@@ -14,9 +14,10 @@ public class MemoryManagement {
     public void run(String[] args) {
         boolean isModifiedAlgorithm = true;
 
-        if (args.length < 1 || args.length > 3) {
+        if (args.length < 1 || args.length > 3 || (args.length > 2 &&
+                !(args[2].equalsIgnoreCase("true") || args[2].equalsIgnoreCase("false")))) {
             System.out.println("Usage: 'java MemoryManagement <COMMAND FILE> <PROPERTIES FILE> [IS MODIFIED " +
-                    "ALGORITHM USED]'");
+                    "ALGORITHM USED (\"true\" by default)]'");
             System.exit(-1);
         }
 
