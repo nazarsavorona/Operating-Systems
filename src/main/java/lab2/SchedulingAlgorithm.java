@@ -5,7 +5,7 @@ import java.io.*;
 import java.util.stream.IntStream;
 
 public class SchedulingAlgorithm {
-    public static Results run(int runtime, Vector processVector, Results result) {
+    public static Results run(int runtime, Vector processVector, List queueList, Results result) {
         int comptime = 0;
         int currentProcess = 0;
 
@@ -17,17 +17,13 @@ public class SchedulingAlgorithm {
         result.schedulingType = "Interactive";
         result.schedulingName = "Multiple Queues";
 
-        List queueList = new ArrayList<ArrayList<Integer>>();
-        queueList.add(new ArrayList<Integer>());
-
-        List currentList = (List) queueList.get(0);
-        IntStream.range(0, size).forEach(currentList::add);
-
+        boolean allProcessesDone = false;
         try {
             PrintStream out = new PrintStream(new FileOutputStream(resultsFile));
 
-            for (int k = 0; k < queueList.size(); k++) {
-                List list = (List<?>) queueList.get(k);
+            int currentQueueLevel = 0;
+            while (comptime < runtime && !allProcessesDone) {
+                List list = (List<?>) queueList.get(currentQueueLevel);
 
                 for (int j = 0; j < list.size(); j++) {
                     currentProcess = (Integer) list.get(j);
@@ -36,7 +32,7 @@ public class SchedulingAlgorithm {
                     logProcessState(currentProcess, out, process, "registered");
 
                     while (comptime < runtime) {
-                        if (process.cpudone == process.cputime) {
+                        if (process.cpudone >= process.cputime) {
                             completed++;
                             list.remove((Object) currentProcess);
                             j--;
@@ -57,14 +53,14 @@ public class SchedulingAlgorithm {
                             process.ionext = 0;
                             process.ioblocking *= 2;
 
-                            if (queueList.size() < k + 2) {
-                                queueList.add(new ArrayList<Integer>());
+                            if (currentQueueLevel != queueList.size() - 1) {
+                                ((List) queueList.get(currentQueueLevel + 1)).add(currentProcess);
+                                list.remove((Object) currentProcess);
+                                j--;
+                                if (j < 0) {
+                                    j = 0;
+                                }
                             }
-
-                            List nextList = (List) queueList.get(k + 1);
-                            nextList.add(currentProcess);
-                            list.remove((Object) currentProcess);
-                            j--;
 
                             break;
                         }
@@ -82,6 +78,7 @@ public class SchedulingAlgorithm {
                 if (comptime >= runtime) {
                     break;
                 }
+                currentQueueLevel = (currentQueueLevel + 1) % queueList.size();
             }
 
             out.close();

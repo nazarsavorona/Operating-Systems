@@ -3,6 +3,8 @@ package lab2;
 import java.io.*;
 import java.util.*;
 
+import static java.lang.Math.min;
+
 public class Scheduling {
     private static int processnum = 5;
     private static int meanDev = 1000;
@@ -11,6 +13,9 @@ public class Scheduling {
     private static final Vector processVector = new Vector();
     private static Results result = new Results("null", "null", 0);
     private static String resultsFile = "Summary-Results";
+    private static ArrayList<ArrayList<Integer>> queueList;
+    private static int queueCountLimit = 0;
+
 
     private static void Init(String file) {
         File f = new File(file);
@@ -22,25 +27,42 @@ public class Scheduling {
         try {
             DataInputStream in = new DataInputStream(new FileInputStream(f));
             while ((line = in.readLine()) != null) {
+                if (line.startsWith("maxqueues")) {
+                    queueCountLimit = readInteger(line);
+
+                    queueList = new ArrayList<>();
+                    for (int i = 0; i < queueCountLimit; i++) {
+                        queueList.add(new ArrayList<Integer>());
+                    }
+                }
+            }
+
+            in.close();
+            in = new DataInputStream(new FileInputStream(f));
+
+            int processId = 0;
+            while ((line = in.readLine()) != null) {
                 if (line.startsWith("numprocess")) {
-                    StringTokenizer st = new StringTokenizer(line);
-                    st.nextToken();
-                    processnum = Common.s2i(st.nextToken());
+                    processnum = readInteger(line);
                 }
                 if (line.startsWith("meandev")) {
-                    StringTokenizer st = new StringTokenizer(line);
-                    st.nextToken();
-                    meanDev = Common.s2i(st.nextToken());
+                    meanDev = readInteger(line);
                 }
                 if (line.startsWith("standdev")) {
-                    StringTokenizer st = new StringTokenizer(line);
-                    st.nextToken();
-                    standardDev = Common.s2i(st.nextToken());
+                    standardDev = readInteger(line);
                 }
+                if (line.startsWith("runtime")) {
+                    runtime = readInteger(line);
+                }
+
                 if (line.startsWith("process")) {
                     StringTokenizer st = new StringTokenizer(line);
                     st.nextToken();
                     ioblocking = Common.s2i(st.nextToken());
+                    int level = min(queueCountLimit - 1, Common.s2i(st.nextToken()));
+                    if (level < 0) {
+                        level = 0;
+                    }
                     X = Common.R1();
                     while (X == -1.0) {
                         X = Common.R1();
@@ -48,15 +70,18 @@ public class Scheduling {
                     X = X * standardDev;
                     cputime = (int) X + meanDev;
                     processVector.addElement(new Process(cputime, ioblocking, 0, 0, 0));
+                    queueList.get(level).add(processId++);
                 }
-                if (line.startsWith("runtime")) {
-                    StringTokenizer st = new StringTokenizer(line);
-                    st.nextToken();
-                    runtime = Common.s2i(st.nextToken());
-                }
+
             }
             in.close();
         } catch (IOException e) { /* Handle exceptions */ }
+    }
+
+    private static int readInteger(String line) {
+        StringTokenizer st = new StringTokenizer(line);
+        st.nextToken();
+        return Common.s2i(st.nextToken());
     }
 
     private static void debug() {
@@ -93,18 +118,24 @@ public class Scheduling {
         Init(args[0]);
         if (processVector.size() < processnum) {
             i = 0;
+            int processId = processVector.size();
+            Random random = new Random();
             while (processVector.size() < processnum) {
-                double X = Common.R1();
-                while (X == -1.0) {
-                    X = Common.R1();
-                }
-                X = X * standardDev;
-                int cputime = (int) X + meanDev;
-                processVector.addElement(new Process(cputime, i * 100, 0, 0, 0));
+                int cputime = (int) (random.nextDouble() * standardDev + meanDev);
+
+                int level = random.nextInt(0, queueCountLimit);
+                processVector.addElement(new Process(cputime, (i + 1) * 100, 0, 0, 0));
+                queueList.get(level).add(processId++);
                 i++;
             }
         }
-        result = SchedulingAlgorithm.run(runtime, processVector, result);
+        result = SchedulingAlgorithm.run(runtime, processVector, queueList, result);
+        logResults();
+        System.out.println("Completed.");
+    }
+
+    private static void logResults() {
+        int i;
         try {
             PrintStream out = new PrintStream(new FileOutputStream(resultsFile));
             out.println("Scheduling Type: " + result.schedulingType);
@@ -143,7 +174,6 @@ public class Scheduling {
             }
             out.close();
         } catch (IOException e) { /* Handle exceptions */ }
-        System.out.println("Completed.");
     }
 }
 
