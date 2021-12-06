@@ -33,6 +33,7 @@ public class Kernel extends Thread {
     public long block = (int) Math.pow(2, 12);
     public static byte addressradix = 10;
     private Set<Integer> physicalMapped = new HashSet<>();
+    private Set<Integer> physicalUnused = new HashSet<>();
     private List<Page> workingSet = new ArrayList<>();
     private int pageFaultCount = 0;
     private PageFault pageFaultHandler = new PageFault();
@@ -320,12 +321,19 @@ public class Kernel extends Thread {
             }
         }
 
+        physicalUnused.addAll(physicalMapped);
+
         for (i = 0; i < virtPageNum; i++) {
             Page page = (Page) memVector.elementAt(i);
+
+            if (page.physical != -1 && (page.R == 1 || page.M == 1)) {
+                physicalUnused.remove(page.id);
+                workingSet.add(page);
+            }
+
             if (page.physical == -1) {
                 controlPanel.removePhysicalPage(i);
             } else {
-                workingSet.add(page);
                 controlPanel.addPhysicalPage(page.id, page.physical);
             }
         }
@@ -430,6 +438,7 @@ public class Kernel extends Thread {
             } else {
                 if (!workingSet.contains(page)) {
                     workingSet.add(page);
+                    physicalUnused.remove(page.physical);
                 }
                 page.R = 1;
                 page.lastTouchTime = 0;
@@ -444,6 +453,7 @@ public class Kernel extends Thread {
             } else {
                 if (!workingSet.contains(page)) {
                     workingSet.add(page);
+                    physicalUnused.remove(page.physical);
                 }
                 page.M = 1;
                 page.R = 1;
@@ -466,7 +476,7 @@ public class Kernel extends Thread {
     private void startReplacementAlgorithm(int virtualPageNumber) {
         pageFaultCount++;
         if (isModifiedAlgorithm) {
-            pageFaultHandler.replacePage(memVector, virtualPageNumber, controlPanel, workingSet, tau, ioLimit);
+            pageFaultHandler.replacePage(memVector, virtualPageNumber, controlPanel, workingSet,physicalUnused, tau, ioLimit);
         } else {
             pageFaultHandler.replacePage(memVector, virtPageNum, virtualPageNumber, controlPanel);
         }
@@ -484,6 +494,7 @@ public class Kernel extends Thread {
     public void reset() {
         workingSet.clear();
         physicalMapped.clear();
+        physicalUnused.clear();
         memVector.removeAllElements();
         instructVector.removeAllElements();
         controlPanel.statusValueLabel.setText("STOP");
